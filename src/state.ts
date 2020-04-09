@@ -17,7 +17,9 @@ export class State {
     }
 
     addTransitionForSymbol(symbol: string, state: State): void {
-        this.transitionMap.set(symbol, [state]);
+        // Getting prevStates
+        let prevStates = this.getTransitionForSymbol(symbol) || [];
+        this.transitionMap.set(symbol, [state, ...prevStates]);
     }
 
     // {a: [s]}
@@ -69,13 +71,16 @@ export class State {
             [machinePtr] =
                 machinePtr.getTransitionForSymbol(symbols[idx]) || [];
 
-            console.log(`next machine ptr... after consuming: ${symbols[idx]}`, {
-                machinePtr
-            });
+            console.log(
+                `next machine ptr... after consuming: ${symbols[idx]}`,
+                {
+                    machinePtr
+                }
+            );
 
             if (!machinePtr) return false;
 
-            console.log('idx before incrementing...', idx)
+            console.log("idx before incrementing...", idx);
             idx++;
         }
 
@@ -151,8 +156,7 @@ export function concat(first: NFA, ...rest: Array<NFA>): NFA {
 }
 
 // Union factory: single pari a|b
-
-function orPair(first: NFA, second: NFA): NFA {
+export function orPair(first: NFA, second: NFA): NFA {
     const startState = new State();
     const finalState = new State({ accepting: true });
 
@@ -171,10 +175,35 @@ function orPair(first: NFA, second: NFA): NFA {
 }
 
 // Union factory : `a|b|c`
-function or(first: NFA, ...rest: Array<NFA>) {
+export function or(first: NFA, ...rest: Array<NFA>) {
     for (let fragment of rest) {
         first = orPair(first, fragment);
     }
 
     return first;
+}
+
+
+// Repition factory aka "Kleeene closure" : `a*`
+export function rep(fragment: NFA): NFA  {
+   const startState = new State(); 
+   const finalState = new State({accepting: true}); 
+
+   // Setting up the first non-epsilon transition (entering into the machine)
+   startState.addTransitionForSymbol(EPSILON, fragment.inState); 
+   fragment.outState.accepting = false; 
+
+
+   // Setting up lower (0 times) case
+   startState.addTransitionForSymbol(EPSILON, finalState); 
+
+   // Setting up epsilon transition on fragment to the final state
+   fragment.outState.addTransitionForSymbol(EPSILON, finalState); 
+
+
+   // Finally, setting up the back transition to repeat the machine multiple times
+   finalState.addTransitionForSymbol(EPSILON, fragment.inState); 
+
+
+   return new NFA(startState, finalState);
 }

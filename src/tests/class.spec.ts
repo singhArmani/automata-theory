@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { char, concatPair, concat, State, epsilon } from "../state";
+import { char, concatPair, orPair, or, concat, State, epsilon } from "../state";
 
 import "mocha";
 
@@ -52,5 +52,26 @@ describe("Regex test", () => {
         expect(str.test("ab")).to.equal(false);
         expect(str.test("b")).to.equal(false);
         expect(str.test("abc")).to.equal(true);
+    });
+    it("should match correctly: union machine: single pair", () => {
+        const first = char("a");
+        const second = char("b");
+
+        const str = orPair(first, second);
+
+        expect(str.test("a")).to.equal(true);
+        expect(str.test("b")).to.equal(true);
+        expect(str.test("c")).to.equal(false);
+    });
+    it("should match correctly: union machine: multiple pair", () => {
+        const first = char("a");
+        const second = char("b");
+        const third = char("c");
+
+        const str = or(first, second, third);
+
+        expect(str.test("a")).to.equal(true);
+        expect(str.test("b")).to.equal(true);
+        expect(str.test("c")).to.equal(true);
     });
 });
