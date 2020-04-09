@@ -27,13 +27,7 @@ export class State {
         return this.transitionMap.get(symbol) || [];
     }
 
-    /**
-     * Check if the string matches.
-     * @param {string} symbols - the string to match.
-     * @param {Set} visited - To indicate if 𝝴 transition was made on current state
-     * @returns {boolean} - Returns if string match or not
-     */
-    test(symbols: string, visited = new Set()) {
+    test(symbols: string, visited = new Set()): boolean {
         // 1. Using graph traversal technique
 
         // If we have had previously made a epsilon transition to this state,

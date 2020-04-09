@@ -120,4 +120,16 @@ describe("Regex test", () => {
         expect(repChar.test("")).to.equal(false);
 
     });
+
+    it("should match correctly: complex machine", () => {
+
+        // Example: /xy*|z/
+        const regex = or(concat(char('x'), rep(char('y'))), char('z'));
+
+        expect(regex.test("x")).to.equal(true);
+        expect(regex.test("xy")).to.equal(true);
+        expect(regex.test("z")).to.equal(true);
+        expect(regex.test("za")).to.equal(false);
+
+    });
 });
