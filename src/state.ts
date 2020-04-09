@@ -24,73 +24,66 @@ export class State {
 
     // {a: [s]}
     getTransitionForSymbol(symbol: string): Array<State> {
-        return this.transitionMap.get(symbol);
+        return this.transitionMap.get(symbol) || [];
     }
 
-    test(symbols: string) {
-        let idx = 0;
+    /**
+     * Check if the string matches.
+     * @param {string} symbols - the string to match.
+     * @param {Set} visited - To indicate if 𝝴 transition was made on current state
+     * @returns {boolean} - Returns if string match or not
+     */
+    test(symbols: string, visited = new Set()) {
+        // 1. Using graph traversal technique
 
-        let machinePtr: State = this;
-
-        if (symbols.length === 0) {
-            [machinePtr] = machinePtr.getTransitionForSymbol(EPSILON) || [];
-
-            return !!machinePtr && machinePtr.accepting;
+        // If we have had previously made a epsilon transition to this state,
+        // and visiting this state again, it means we may be in an infinite loop
+        // and couldn't reach the accepting state. So, we return false.
+        if (visited.has(this)) {
+            return false;
         }
 
-        while (idx < symbols.length) {
-            let [transitionKey] = machinePtr.transitionMap.keys() || [];
+        // Adding this epsilon transition to the set
+        visited.add(this);
 
-            console.log("....while...started...", {
-                transitionKey,
-                symbol: symbols[idx],
-                machinePtr
-            });
+        // If we have consumed all the sybmols in the string, and
+        // reached to the end.
+        if (symbols.length == 0) {
+            // We check if it's accepting state
+            if (this.accepting) return true;
 
-            if (transitionKey === EPSILON) {
-                console.log("transition..", transitionKey);
-
-                // We make the transition but not consume the character
-                [machinePtr] = machinePtr.getTransitionForSymbol(EPSILON);
-
-                console.log("next epsilon transit state: ", { machinePtr });
-                continue;
+            // If string is empty, we shouldn't give up. We can still reach to an accepting state
+            // 1. if this current state has 1-many epsilon transtions.
+            // 2. Or, following all the epsilon transition chain. 𝝴 -> o -> 𝝴 -> o -> ...
+            for (const nextState of this.getTransitionForSymbol(EPSILON)) {
+                if (nextState.test("", visited)) return true;
             }
-
-            console.log("transitionKey is not epsilon", {
-                transitionKey,
-                symbol: symbols[idx]
-            });
-
-            console.log(
-                "moving machinePtr to the next transit state on consuming: ",
-                symbols[idx]
-            );
-
-            // we consume the character and move the idx, and machinePtr
-            [machinePtr] =
-                machinePtr.getTransitionForSymbol(symbols[idx]) || [];
-
-            console.log(
-                `next machine ptr... after consuming: ${symbols[idx]}`,
-                {
-                    machinePtr
-                }
-            );
-
-            if (!machinePtr) return false;
-
-            console.log("idx before incrementing...", idx);
-            idx++;
+            return false;
         }
 
-        console.log("out of while looop..........", {
-            machinePtr,
-            symbol: symbols[idx],
-            idx
-        });
+        // Otherwise, handle the case when string is not empty,
+        const firstSymbol = symbols[0];
+        const rest = symbols.slice(1);
 
-        return machinePtr.accepting;
+        /* We see if we have any transition from this state on the current symbol. 
+           If yes, the symbol is consumed and recursive analysis for the string is executed. 
+        */
+        const symbolTransitions = this.getTransitionForSymbol(firstSymbol);
+
+        // Checking if we can match current symbol and rest of the string recursively
+        for (const nextState of symbolTransitions) {
+            if (nextState.test(rest)) return true;
+        }
+
+
+        // If we don't have any transition from this symbol, we again still need to check for any 
+        // epsilon transition, and see if we can reach to the accepting state. 
+
+        for (const nextState of this.getTransitionForSymbol(EPSILON)) {
+           if(nextState.test(symbols, visited)) return true;  
+        }
+
+        return false; 
     }
 }
 
@@ -183,27 +176,46 @@ export function or(first: NFA, ...rest: Array<NFA>) {
     return first;
 }
 
-
 // Repition factory aka "Kleeene closure" : `a*`
-export function rep(fragment: NFA): NFA  {
-   const startState = new State(); 
-   const finalState = new State({accepting: true}); 
+// Fragment is a black box NFA machine.
+export function rep(fragment: NFA): NFA {
+    const startState = new State();
+    const finalState = new State({ accepting: true });
 
-   // Setting up the first non-epsilon transition (entering into the machine)
-   startState.addTransitionForSymbol(EPSILON, fragment.inState); 
-   fragment.outState.accepting = false; 
+    // Setting up the first non-epsilon transition (entering into the machine)
+    startState.addTransitionForSymbol(EPSILON, fragment.inState);
+    fragment.outState.accepting = false;
 
+    // Setting up lower (0 times) case
+    startState.addTransitionForSymbol(EPSILON, finalState);
 
-   // Setting up lower (0 times) case
-   startState.addTransitionForSymbol(EPSILON, finalState); 
+    // Setting up epsilon transition on fragment to the final state
+    fragment.outState.addTransitionForSymbol(EPSILON, finalState);
 
-   // Setting up epsilon transition on fragment to the final state
-   fragment.outState.addTransitionForSymbol(EPSILON, finalState); 
+    // Finally, setting up the back transition to repeat the machine multiple times
+    finalState.addTransitionForSymbol(EPSILON, fragment.inState);
 
+    return new NFA(startState, finalState);
+}
 
-   // Finally, setting up the back transition to repeat the machine multiple times
-   finalState.addTransitionForSymbol(EPSILON, fragment.inState); 
+// Repition factory for "+" operator: Repeting one or more times.
+// A+ === AA*
+export function plus(fragment: NFA): NFA {
+    return concat(fragment, rep(fragment));
+}
 
+// Optional machine "?": repeating 0 or 1 time
+export function optional(fragment: NFA): NFA {
+    return orPair(fragment, epsilon());
+}
 
-   return new NFA(startState, finalState);
+// Character class for digits \d: [0-9] === 0|1|2|3|....|9
+export function digits(): NFA {
+    let nfa = char("0");
+
+    for (let i = 1; i < 10; i++) {
+        nfa = orPair(nfa, char(i.toString()));
+    }
+
+    return nfa;
 }

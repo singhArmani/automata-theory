@@ -1,5 +1,16 @@
 import { expect } from "chai";
-import { char, concatPair, orPair, or, concat, State, epsilon } from "../state";
+import {
+    char,
+    concatPair,
+    digits,
+    orPair,
+    or,
+    concat,
+    plus,
+    State,
+    epsilon,
+    rep
+} from "../state";
 
 import "mocha";
 
@@ -53,6 +64,7 @@ describe("Regex test", () => {
         expect(str.test("b")).to.equal(false);
         expect(str.test("abc")).to.equal(true);
     });
+
     it("should match correctly: union machine: single pair", () => {
         const first = char("a");
         const second = char("b");
@@ -73,5 +85,39 @@ describe("Regex test", () => {
         expect(str.test("a")).to.equal(true);
         expect(str.test("b")).to.equal(true);
         expect(str.test("c")).to.equal(true);
+    });
+
+    it("should match correctly: repition machine", () => {
+        const repChar = rep(char("a"));
+
+        expect(repChar.test("a")).to.equal(true);
+        expect(repChar.test("")).to.equal(true);
+        expect(repChar.test("aaaaaa")).to.equal(true);
+    });
+
+    it("should match correctly: digit character set", () => {
+        expect(digits().test("0")).to.equal(true);
+        expect(digits().test("5")).to.equal(true);
+        expect(digits().test("9")).to.equal(true);
+        expect(digits().test("a")).to.equal(false);
+    });
+
+    it("should match correctly: plus operator", () => {
+
+        const repChar = plus(char("a"));
+
+        expect(repChar.test("a")).to.equal(true);
+        expect(repChar.test("aaaaaa")).to.equal(true);
+        expect(repChar.test("")).to.equal(false);
+    });
+
+    it("should match correctly: plus operator", () => {
+
+        const repChar = plus(char("a"));
+
+        expect(repChar.test("a")).to.equal(true);
+        expect(repChar.test("aaaaaa")).to.equal(true);
+        expect(repChar.test("")).to.equal(false);
+
     });
 });
