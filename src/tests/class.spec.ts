@@ -6,6 +6,7 @@ import {
     orPair,
     or,
     concat,
+    plusOpt,
     plus,
     State,
     epsilon,
@@ -120,6 +121,15 @@ describe("Regex test", () => {
 
     it("should match correctly: plus operator", () => {
         const repChar = plus(char("a"));
+
+        expect(repChar.test("a")).to.equal(true);
+        expect(repChar.test("aaaaaa")).to.equal(true);
+        expect(repChar.test("")).to.equal(false);
+    });
+
+
+    it("should match correctly: plus operator(optimize)", () => {
+        const repChar = plusOpt(char("a"));
 
         expect(repChar.test("a")).to.equal(true);
         expect(repChar.test("aaaaaa")).to.equal(true);

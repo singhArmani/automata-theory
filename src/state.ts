@@ -191,6 +191,7 @@ export function rep(fragment: NFA): NFA {
     return new NFA(startState, finalState);
 }
 
+// NFA-optimization for rep machine
 export function repOpt(fragment: NFA): NFA {
     // Skipping  entering the state
     fragment.inState.addTransitionForSymbol(EPSILON, fragment.outState);
@@ -206,6 +207,17 @@ export function repOpt(fragment: NFA): NFA {
 export function plus(fragment: NFA): NFA {
     return concat(fragment, rep(fragment));
 }
+
+
+// NFA-optimization for plus operator
+export function plusOpt(fragment: NFA): NFA {
+    // Transitioning back to the inputState of the fragment for multiple entries 
+
+    fragment.outState.addTransitionForSymbol(EPSILON, fragment.inState); 
+
+    return fragment; 
+}
+
 
 // Optional machine "?": repeating 0 or 1 time
 export function optional(fragment: NFA): NFA {
