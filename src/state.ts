@@ -196,7 +196,7 @@ export function repOpt(fragment: NFA): NFA {
     // Skipping  entering the state
     fragment.inState.addTransitionForSymbol(EPSILON, fragment.outState);
 
-    // Transitioning back to the inputState of the fragment for multiple entries 
+    // Transitioning back to the input state of the fragment for multiple entries 
    fragment.outState.addTransitionForSymbol(EPSILON, fragment.inState); 
 
    return fragment; 
@@ -211,7 +211,7 @@ export function plus(fragment: NFA): NFA {
 
 // NFA-optimization for plus operator
 export function plusOpt(fragment: NFA): NFA {
-    // Transitioning back to the inputState of the fragment for multiple entries 
+    // Transitioning back to the input state of the fragment for multiple entries 
 
     fragment.outState.addTransitionForSymbol(EPSILON, fragment.inState); 
 
@@ -223,6 +223,16 @@ export function plusOpt(fragment: NFA): NFA {
 export function optional(fragment: NFA): NFA {
     return orPair(fragment, epsilon());
 }
+
+
+// Optimize optional machine
+export function optionalOpt(fragment: NFA): NFA {
+    // Setting an epsilon transition on the fragment's inState
+    fragment.inState.addTransitionForSymbol(EPSILON, fragment.outState)
+
+    return fragment;
+}
+
 
 // Character class for digits \d: [0-9] === 0|1|2|3|....|9
 export function digits(start: number = 0, finish: number = 9): NFA {
@@ -237,3 +247,22 @@ export function digits(start: number = 0, finish: number = 9): NFA {
 
     return nfa;
 }
+
+
+// digit optimize: As we know that we can only make digit symbol transitions, 
+// we will add 0 - 9 digit transition on the input state to the output state of the fragment.
+export function digitsOpt(start: number = 0, finish: number = 9): NFA {
+
+    if(typeof start !== 'number' || typeof finish !== 'number') throw new TypeError('Only digits are allowed.')
+    if (start < 0 || start > 9 || finish < 0 || finish > 9)
+        throw new Error("Range not allowed!");
+
+    let nfa = char(start.toString());
+
+    for (let i = start + 1; i <= finish; i++) {
+        nfa.inState.addTransitionForSymbol(i.toString(), nfa.outState);
+    }
+
+    return nfa;
+}
+
