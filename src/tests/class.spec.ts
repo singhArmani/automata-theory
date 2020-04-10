@@ -9,7 +9,8 @@ import {
     plus,
     State,
     epsilon,
-    rep
+    rep,
+    repOpt
 } from "../state";
 
 import "mocha";
@@ -87,7 +88,14 @@ describe("Regex test", () => {
         expect(str.test("c")).to.equal(true);
     });
 
-    it("should match correctly: repition machine", () => {
+    it("should match correctly: repition machine using repOpt", () => {
+        const repChar = repOpt(char("a"));
+
+        expect(repChar.test("a")).to.equal(true);
+        expect(repChar.test("")).to.equal(true);
+        expect(repChar.test("aaaaaa")).to.equal(true);
+    });
+    it("should match correctly: repition machine using rep", () => {
         const repChar = rep(char("a"));
 
         expect(repChar.test("a")).to.equal(true);
@@ -102,8 +110,15 @@ describe("Regex test", () => {
         expect(digits().test("a")).to.equal(false);
     });
 
-    it("should match correctly: plus operator", () => {
+    it("should match correctly: digit character range set", () => {
+        const digitRange = digits(0, 3);
+        expect(digitRange.test("0")).to.equal(true);
+        expect(digitRange.test("3")).to.equal(true);
+        expect(digitRange.test("9")).to.equal(false);
+        expect(digitRange.test("a")).to.equal(false);
+    });
 
+    it("should match correctly: plus operator", () => {
         const repChar = plus(char("a"));
 
         expect(repChar.test("a")).to.equal(true);
@@ -111,25 +126,32 @@ describe("Regex test", () => {
         expect(repChar.test("")).to.equal(false);
     });
 
-    it("should match correctly: plus operator", () => {
-
-        const repChar = plus(char("a"));
-
-        expect(repChar.test("a")).to.equal(true);
-        expect(repChar.test("aaaaaa")).to.equal(true);
-        expect(repChar.test("")).to.equal(false);
-
-    });
-
-    it("should match correctly: complex machine", () => {
-
-        // Example: /xy*|z/
-        const regex = or(concat(char('x'), rep(char('y'))), char('z'));
+    it("should match correctly: complex machine /xy*|z/", () => {
+        const regex = or(concat(char("x"), rep(char("y"))), char("z"));
 
         expect(regex.test("x")).to.equal(true);
         expect(regex.test("xy")).to.equal(true);
         expect(regex.test("z")).to.equal(true);
         expect(regex.test("za")).to.equal(false);
+    });
 
+    it("should match correctly: complex machine /a+[0-3]/", () => {
+        const regex = concat(plus(char("a")), digits(0, 3));
+
+        expect(regex.test("a")).to.equal(false);
+        expect(regex.test("")).to.equal(false);
+        expect(regex.test("aaa1")).to.equal(true);
+        expect(regex.test("4")).to.equal(false);
+        expect(regex.test("aa2")).to.equal(true);
+    });
+    it("should match correctly: complex machine /a+|[0-3]/", () => {
+        const regex = or(plus(char("a")), digits(0, 3));
+
+        expect(regex.test("a")).to.equal(true);
+        expect(regex.test("")).to.equal(false);
+        expect(regex.test("aaa1")).to.equal(false);
+        expect(regex.test("aaa")).to.equal(true);
+        expect(regex.test("4")).to.equal(false);
+        expect(regex.test("aa2")).to.equal(false);
     });
 });

@@ -69,15 +69,14 @@ export class State {
             if (nextState.test(rest)) return true;
         }
 
-
-        // If we don't have any transition from this symbol, we again still need to check for any 
-        // epsilon transition, and see if we can reach to the accepting state. 
+        // If we don't have any transition from this symbol, we again still need to check for any
+        // epsilon transition, and see if we can reach to the accepting state.
 
         for (const nextState of this.getTransitionForSymbol(EPSILON)) {
-           if(nextState.test(symbols, visited)) return true;  
+            if (nextState.test(symbols, visited)) return true;
         }
 
-        return false; 
+        return false;
     }
 }
 
@@ -192,6 +191,16 @@ export function rep(fragment: NFA): NFA {
     return new NFA(startState, finalState);
 }
 
+export function repOpt(fragment: NFA): NFA {
+    // Skipping  entering the state
+    fragment.inState.addTransitionForSymbol(EPSILON, fragment.outState);
+
+    // Transitioning back to the inputState of the fragment for multiple entries 
+   fragment.outState.addTransitionForSymbol(EPSILON, fragment.inState); 
+
+   return fragment; 
+}
+
 // Repition factory for "+" operator: Repeting one or more times.
 // A+ === AA*
 export function plus(fragment: NFA): NFA {
@@ -204,10 +213,13 @@ export function optional(fragment: NFA): NFA {
 }
 
 // Character class for digits \d: [0-9] === 0|1|2|3|....|9
-export function digits(): NFA {
-    let nfa = char("0");
+export function digits(start: number = 0, finish: number = 9): NFA {
+    if (start < 0 || start > 9 || finish < 0 || finish > 9)
+        throw new Error("Range not allowed!");
 
-    for (let i = 1; i < 10; i++) {
+    let nfa = char(start.toString());
+
+    for (let i = start + 1; i <= finish; i++) {
         nfa = orPair(nfa, char(i.toString()));
     }
 
