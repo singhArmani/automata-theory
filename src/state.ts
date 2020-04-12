@@ -3,28 +3,44 @@
  */
 
 const EPSILON = "𝝴";
+const EPSILON_CLOSURE = "𝝴*";
 
 type options = {
     accepting?: boolean;
 };
 
+
 export class State {
     accepting: boolean;
-    transitionMap: Map<string, Array<State>>;
+
+    // To Store all the states reachable from this state following only ep-transition.
+    // (including state itself)
+    _epsilonClosure: Array<State>;
+
+    // Outgoing transition to other states
+    _transitionMap: Map<string, Array<State>>;
+
     constructor({ accepting = false }: options = {}) {
         this.accepting = accepting;
-        this.transitionMap = new Map<string, Array<State>>();
+        this._transitionMap = new Map<string, Array<State>>();
     }
+
+    // Labelling state
+    number:number; 
 
     addTransitionForSymbol(symbol: string, state: State): void {
         // Getting prevStates
         let prevStates = this.getTransitionForSymbol(symbol) || [];
-        this.transitionMap.set(symbol, [state, ...prevStates]);
+        this._transitionMap.set(symbol, [state, ...prevStates]);
     }
 
     // {a: [s]}
     getTransitionForSymbol(symbol: string): Array<State> {
-        return this.transitionMap.get(symbol) || [];
+        return this._transitionMap.get(symbol) || [];
+    }
+
+    getTransitionMap(): Map<string, Array<State>> {
+        return this._transitionMap;
     }
 
     test(symbols: string, visited = new Set()): boolean {
@@ -78,14 +94,40 @@ export class State {
 
         return false;
     }
+
+    // Returns the ep-closure for this state:
+    //  Self + all states following ep-transition
+    getEpsilonClosure(): Array<State> {
+        if (!this._epsilonClosure) {
+            const epsilonTransitions = this.getTransitionForSymbol(EPSILON);
+
+            const closure = (this._epsilonClosure = []);
+            closure.push(this); // adding state itself
+
+            for (const nextState of epsilonTransitions) {
+                if (!closure.includes(nextState)) {
+                    closure.push(nextState);
+
+                    const nextClosure = nextState.getEpsilonClosure();
+
+                    nextClosure.forEach(state => closure.push(state));
+                }
+            }
+        }
+
+        return this._epsilonClosure;
+    }
 }
 
-// Single character and epsilon-transition machine
 // We are only maintaining two invariants of having only one input state,
 // and only one output state
 export class NFA {
     inState: State;
     outState: State;
+
+    _transitionTable: Map<string, {[key: string]: Array<number>}>;
+
+    _acceptingStates: Set<State>;
 
     constructor(inState: State, outState: State) {
         this.inState = inState;
@@ -95,6 +137,68 @@ export class NFA {
     // Tests whether this NFA matched the string. Delagate to the input state.
     test(string: string) {
         return this.inState.test(string);
+    }
+
+    /*
+     * Returns transition table
+     */
+    getTransitionTable() {
+        // We check if we have already calcutated the transition table or not. If not
+        // then we calcutate it once and cache it in one of the member (_transitionTable) of the NFA class
+        if (!this._transitionTable) {
+            this._transitionTable = new Map();
+
+            this._acceptingStates = new Set();
+
+            const symbols = new Set();
+            const visited = new Set<State>();
+
+            const visitState = (state: State): void  => {
+                if (visited.has(state)) return;
+
+                visited.add(state);
+
+                // Labelling state with number (We use size of the set)
+                state.number = visited.size;
+
+                if (state.accepting) this._acceptingStates.add(state);
+
+                this._transitionTable.set(`${ state.number }`, {});
+
+                for (const [symbol, transitions] of state.getTransitionMap()) {
+                    let combinedState = [];
+                    symbols.add(symbol);
+
+                    for (const nextState of transitions) {
+                        visitState(nextState);
+                        combinedState.push(nextState.number);
+                    }
+                    this._transitionTable.get(state.number.toString())[
+                        symbol
+                    ] = combinedState;
+                }
+            }
+
+            visitState(this.inState);
+
+            // Let's remove the epsilon transition and add epsilon closure column into the table
+            // Here we will use our getEpsilonClosure method defined on the state
+            // and our visited set
+            for(const state of visited) {
+
+                const stateLabel = state.number.toString();
+                // Deleting the epsilon transition from the table
+               delete  this._transitionTable.get(stateLabel)[EPSILON]; 
+
+               const epsilonClosure = state.getEpsilonClosure(); 
+
+               // Adding 
+               this._transitionTable.get(stateLabel)[EPSILON_CLOSURE] = epsilonClosure.map(s => s.number); 
+            }
+
+        }
+
+        return this._transitionTable;
     }
 }
 
@@ -196,10 +300,10 @@ export function repOpt(fragment: NFA): NFA {
     // Skipping  entering the state
     fragment.inState.addTransitionForSymbol(EPSILON, fragment.outState);
 
-    // Transitioning back to the input state of the fragment for multiple entries 
-   fragment.outState.addTransitionForSymbol(EPSILON, fragment.inState); 
+    // Transitioning back to the input state of the fragment for multiple entries
+    fragment.outState.addTransitionForSymbol(EPSILON, fragment.inState);
 
-   return fragment; 
+    return fragment;
 }
 
 // Repition factory for "+" operator: Repeting one or more times.
@@ -208,31 +312,27 @@ export function plus(fragment: NFA): NFA {
     return concat(fragment, rep(fragment));
 }
 
-
 // NFA-optimization for plus operator
 export function plusOpt(fragment: NFA): NFA {
-    // Transitioning back to the input state of the fragment for multiple entries 
+    // Transitioning back to the input state of the fragment for multiple entries
 
-    fragment.outState.addTransitionForSymbol(EPSILON, fragment.inState); 
+    fragment.outState.addTransitionForSymbol(EPSILON, fragment.inState);
 
-    return fragment; 
+    return fragment;
 }
-
 
 // Optional machine "?": repeating 0 or 1 time
 export function optional(fragment: NFA): NFA {
     return orPair(fragment, epsilon());
 }
 
-
 // Optimize optional machine
 export function optionalOpt(fragment: NFA): NFA {
     // Setting an epsilon transition on the fragment's inState
-    fragment.inState.addTransitionForSymbol(EPSILON, fragment.outState)
+    fragment.inState.addTransitionForSymbol(EPSILON, fragment.outState);
 
     return fragment;
 }
-
 
 // Character class for digits \d: [0-9] === 0|1|2|3|....|9
 export function digits(start: number = 0, finish: number = 9): NFA {
@@ -248,12 +348,11 @@ export function digits(start: number = 0, finish: number = 9): NFA {
     return nfa;
 }
 
-
-// digit optimize: As we know that we can only make digit symbol transitions, 
+// digit optimize: As we know that we can only make digit symbol transitions,
 // we will add 0 - 9 digit transition on the input state to the output state of the fragment.
 export function digitsOpt(start: number = 0, finish: number = 9): NFA {
-
-    if(typeof start !== 'number' || typeof finish !== 'number') throw new TypeError('Only digits are allowed.')
+    if (typeof start !== "number" || typeof finish !== "number")
+        throw new TypeError("Only digits are allowed.");
     if (start < 0 || start > 9 || finish < 0 || finish > 9)
         throw new Error("Range not allowed!");
 
@@ -265,4 +364,3 @@ export function digitsOpt(start: number = 0, finish: number = 9): NFA {
 
     return nfa;
 }
-

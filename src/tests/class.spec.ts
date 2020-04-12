@@ -3,6 +3,7 @@ import {
     char,
     concatPair,
     digits,
+    digitsOpt,
     orPair,
     or,
     concat,
@@ -173,3 +174,4 @@ describe("Regex test", () => {
         expect(regex.test("aa2")).to.equal(false);
     });
 });
+
