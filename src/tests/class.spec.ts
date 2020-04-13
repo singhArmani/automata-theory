@@ -16,6 +16,8 @@ import {
     repOpt
 } from "../state";
 
+import DFA from "../dfa";
+
 import "mocha";
 
 describe("State class", () => {
@@ -173,5 +175,15 @@ describe("Regex test", () => {
         expect(regex.test("4")).to.equal(false);
         expect(regex.test("aa2")).to.equal(false);
     });
-});
+    it("should return correct alphabet DFA", () => {
+        const regex = or(plus(char("a")), digits(0, 3));
+        const nfa = orPair(char("a"), char("b"));
 
+        const dfa = new DFA(regex);
+
+        const alphabets = dfa.getAlphabet();
+
+        expect(alphabets.size).to.equal(5);
+        expect(nfa.getAlphabet().size).to.equal(3);
+    });
+});

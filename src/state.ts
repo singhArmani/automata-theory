@@ -2,13 +2,14 @@
  * FA state class
  */
 
-const EPSILON = "𝝴";
-const EPSILON_CLOSURE = "𝝴*";
+import NFA from "./nfa";
+
+export const EPSILON = "𝝴";
+export const EPSILON_CLOSURE = "𝝴*";
 
 type options = {
     accepting?: boolean;
 };
-
 
 export class State {
     accepting: boolean;
@@ -26,7 +27,7 @@ export class State {
     }
 
     // Labelling state
-    number:number; 
+    number: number;
 
     addTransitionForSymbol(symbol: string, state: State): void {
         // Getting prevStates
@@ -116,89 +117,6 @@ export class State {
         }
 
         return this._epsilonClosure;
-    }
-}
-
-// We are only maintaining two invariants of having only one input state,
-// and only one output state
-export class NFA {
-    inState: State;
-    outState: State;
-
-    _transitionTable: Map<string, {[key: string]: Array<number>}>;
-
-    _acceptingStates: Set<State>;
-
-    constructor(inState: State, outState: State) {
-        this.inState = inState;
-        this.outState = outState;
-    }
-
-    // Tests whether this NFA matched the string. Delagate to the input state.
-    test(string: string) {
-        return this.inState.test(string);
-    }
-
-    /*
-     * Returns transition table
-     */
-    getTransitionTable() {
-        // We check if we have already calcutated the transition table or not. If not
-        // then we calcutate it once and cache it in one of the member (_transitionTable) of the NFA class
-        if (!this._transitionTable) {
-            this._transitionTable = new Map();
-
-            this._acceptingStates = new Set();
-
-            const symbols = new Set();
-            const visited = new Set<State>();
-
-            const visitState = (state: State): void  => {
-                if (visited.has(state)) return;
-
-                visited.add(state);
-
-                // Labelling state with number (We use size of the set)
-                state.number = visited.size;
-
-                if (state.accepting) this._acceptingStates.add(state);
-
-                this._transitionTable.set(`${ state.number }`, {});
-
-                for (const [symbol, transitions] of state.getTransitionMap()) {
-                    let combinedState = [];
-                    symbols.add(symbol);
-
-                    for (const nextState of transitions) {
-                        visitState(nextState);
-                        combinedState.push(nextState.number);
-                    }
-                    this._transitionTable.get(state.number.toString())[
-                        symbol
-                    ] = combinedState;
-                }
-            }
-
-            visitState(this.inState);
-
-            // Let's remove the epsilon transition and add epsilon closure column into the table
-            // Here we will use our getEpsilonClosure method defined on the state
-            // and our visited set
-            for(const state of visited) {
-
-                const stateLabel = state.number.toString();
-                // Deleting the epsilon transition from the table
-               delete  this._transitionTable.get(stateLabel)[EPSILON]; 
-
-               const epsilonClosure = state.getEpsilonClosure(); 
-
-               // Adding 
-               this._transitionTable.get(stateLabel)[EPSILON_CLOSURE] = epsilonClosure.map(s => s.number); 
-            }
-
-        }
-
-        return this._transitionTable;
     }
 }
 
