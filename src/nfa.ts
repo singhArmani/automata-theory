@@ -6,7 +6,7 @@ class NFA {
     inState: State;
     outState: State;
 
-    _transitionTable: Map<string, { [key: string]: Array<number> }>;
+    _transitionTable: Map<number, { [key: string]: Array<number> }>;
 
     _acceptingStates: Set<State>;
 
@@ -46,7 +46,7 @@ class NFA {
 
                 if (state.accepting) this._acceptingStates.add(state);
 
-                this._transitionTable.set(`${state.number}`, {});
+                this._transitionTable.set(state.number, {});
 
                 for (const [symbol, transitions] of state.getTransitionMap()) {
                     let combinedState = [];
@@ -56,7 +56,7 @@ class NFA {
                         visitState(nextState);
                         combinedState.push(nextState.number);
                     }
-                    this._transitionTable.get(state.number.toString())[
+                    this._transitionTable.get(state.number)[
                         symbol
                     ] = combinedState;
                 }
@@ -68,7 +68,7 @@ class NFA {
             // Here we will use our getEpsilonClosure method defined on the state
             // and our visited set
             for (const state of visited) {
-                const stateLabel = state.number.toString();
+                const stateLabel = state.number;
                 // Deleting the epsilon transition from the table
                 delete this._transitionTable.get(stateLabel)[EPSILON];
 
@@ -84,6 +84,7 @@ class NFA {
         return this._transitionTable;
     }
 
+    // Getting alphabets used in the table (columns)
     getAlphabet(): Set<string> {
         if (!this._alphabet) {
             this._alphabet = new Set();
@@ -114,6 +115,7 @@ class NFA {
 
         return this._alphabet;
     }
+
 }
 
 export default NFA; 
